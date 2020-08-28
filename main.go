@@ -10,6 +10,8 @@ import (
 	"github.com/MruV-RP/mruv-pb-go/gates"
 	"github.com/MruV-RP/mruv-pb-go/objects"
 	"github.com/MruV-RP/mruv-pb-go/spots"
+	"golang.org/x/text/encoding/charmap"
+	"golang.org/x/text/transform"
 	"google.golang.org/grpc"
 	"log"
 	"os"
@@ -85,7 +87,7 @@ func convert(path string, output string) {
 	entrancesIds := make([]uint32, 0, 1000)
 	defer func() {
 		if r := recover(); r != nil {
-			log.Println("Rolling back changes...")
+			log.Printf("Rolling back changes... Path: %s\n", path)
 			for _, i := range objectsIds {
 				_, err := objectsService.DeleteObject(context.Background(), &objects.DeleteObjectRequest{Id: i})
 				if err != nil {
@@ -104,6 +106,7 @@ func convert(path string, output string) {
 					log.Println(err)
 				}
 			}
+			log.Println("Rolled back.")
 		}
 	}()
 
@@ -112,6 +115,7 @@ func convert(path string, output string) {
 	if err != nil {
 		log.Panicln(err)
 	}
+	r := transform.NewReader(file, charmap.Windows1250.NewDecoder())
 	defer file.Close()
 
 	//Create output files
@@ -166,7 +170,7 @@ func convert(path string, output string) {
 	}
 
 	// convert
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(r)
 	scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 		if atEOF && len(data) == 0 {
 			return 0, nil, nil
