@@ -86,8 +86,8 @@ func convert(path string, output string) {
 	gatesIds := make([]uint32, 0, 1000)
 	entrancesIds := make([]uint32, 0, 1000)
 	defer func() {
-		log.Println("Rolling back changes...")
 		if r := recover(); r != nil {
+			log.Println("Rolling back changes...")
 			for _, i := range objectsIds {
 				_, err := objectsService.DeleteObject(context.Background(), &objects.DeleteObjectRequest{Id: i})
 				if err != nil {
