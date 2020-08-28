@@ -261,7 +261,7 @@ func convert(path string, output string) {
 			if err != nil {
 				log.Fatalln(err)
 			}
-		} else if gatesRegexp.MatchString(scanner.Text()) {
+		} else if match := gatesRegexp.FindStringSubmatch(scanner.Text()); len(match) > 0 {
 			if lastObject == nil {
 				log.Fatalln("Last object is nil for gate: " + scanner.Text())
 			}
@@ -361,7 +361,7 @@ func convert(path string, output string) {
 				log.Fatalln(err)
 			}
 			gatesIds = append(gatesIds, gate.Id)
-		} else if entriesRegexp.MatchString(scanner.Text()) {
+		} else if match := entriesRegexp.FindStringSubmatch(scanner.Text()); len(match) > 0 {
 			_, err = entriesOutput.WriteString(scanner.Text() + "\n")
 			if err != nil {
 				log.Fatalln(err)
