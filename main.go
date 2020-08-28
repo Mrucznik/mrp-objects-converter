@@ -347,7 +347,6 @@ func convert(path string, output string) {
 					Int:     lastObject.InteriorId,
 				},
 			})
-			log.Printf("%f\n", ox)
 			if err != nil {
 				log.Panicln(err)
 			}
