@@ -56,7 +56,7 @@ func main() {
 		fmt.Println("Removing out dir and it's content.")
 		err := os.RemoveAll(outputPath)
 		if err != nil {
-			log.Fatalln(err)
+			log.Panicln(err)
 		}
 	}
 
@@ -112,47 +112,47 @@ func convert(path string, output string) {
 	fmt.Printf("Converting file '%s' to '%s/%s'.\n", path, output, filepath.Base(path))
 	file, err := os.Open(path)
 	if err != nil {
-		log.Fatalln(err)
+		log.Panicln(err)
 	}
 	defer file.Close()
 
 	//Create output files
 	if err := os.MkdirAll(output, 0770); err != nil {
-		log.Fatalln(err)
+		log.Panicln(err)
 	}
 	objectsOutput, err := os.Create(fmt.Sprintf("%s/%s", output, filepath.Base(path)))
 	if err != nil {
-		log.Fatalln(err)
+		log.Panicln(err)
 	}
 	defer objectsOutput.Close()
 	materialsOutput, err := os.Create(fmt.Sprintf("%s/materials_%s", output, filepath.Base(path)))
 	if err != nil {
-		log.Fatalln(err)
+		log.Panicln(err)
 	}
 	defer materialsOutput.Close()
 	buildingsOutput, err := os.Create(fmt.Sprintf("%s/buildings_%s", output, filepath.Base(path)))
 	if err != nil {
-		log.Fatalln(err)
+		log.Panicln(err)
 	}
 	defer buildingsOutput.Close()
 	gatesOutput, err := os.Create(fmt.Sprintf("%s/gates_%s", output, filepath.Base(path)))
 	if err != nil {
-		log.Fatalln(err)
+		log.Panicln(err)
 	}
 	defer gatesOutput.Close()
 	entriesOutput, err := os.Create(fmt.Sprintf("%s/entries_%s", output, filepath.Base(path)))
 	if err != nil {
-		log.Fatalln(err)
+		log.Panicln(err)
 	}
 	defer entriesOutput.Close()
 	materialText, err := os.Create(fmt.Sprintf("%s/material_text_%s", output, filepath.Base(path)))
 	if err != nil {
-		log.Fatalln(err)
+		log.Panicln(err)
 	}
 	defer materialText.Close()
 	othersOutput, err := os.Create(fmt.Sprintf("%s/others_%s", output, filepath.Base(path)))
 	if err != nil {
-		log.Fatalln(err)
+		log.Panicln(err)
 	}
 	defer othersOutput.Close()
 
@@ -164,7 +164,7 @@ func convert(path string, output string) {
 		Description: "",
 	})
 	if err != nil {
-		log.Fatalln(err)
+		log.Panicln(err)
 	}
 
 	// convert
@@ -203,7 +203,7 @@ func convert(path string, output string) {
 		if match := objectRegexp.FindStringSubmatch(scanner.Text()); len(match) > 0 {
 			_, err = objectsOutput.WriteString(scanner.Text() + "\n")
 			if err != nil {
-				log.Fatalln(err)
+				log.Panicln(err)
 			}
 			result := make(map[string]string)
 			for i, name := range objectRegexp.SubexpNames() {
@@ -247,28 +247,28 @@ func convert(path string, output string) {
 				Object: lastObject,
 			})
 			if err != nil {
-				log.Fatalln(err)
+				log.Panicln(err)
 			}
 			lastObjectId = object.Id
 			objectsIds = append(objectsIds, lastObjectId)
 		} else if materialRegexp.MatchString(scanner.Text()) {
 			_, err = materialsOutput.WriteString(fmt.Sprintf("%s // %d\n", scanner.Text(), lastObjectId))
 			if err != nil {
-				log.Fatalln(err)
+				log.Panicln(err)
 			}
 		} else if buildingRegexp.MatchString(scanner.Text()) {
 			_, err = buildingsOutput.WriteString(scanner.Text() + "\n")
 			if err != nil {
-				log.Fatalln(err)
+				log.Panicln(err)
 			}
 		} else if match := gatesRegexp.FindStringSubmatch(scanner.Text()); len(match) > 0 {
 			if lastObject == nil {
-				log.Fatalln("Last object is nil for gate: " + scanner.Text())
+				log.Panicln("Last object is nil for gate: " + scanner.Text())
 			}
 
 			_, err = gatesOutput.WriteString(fmt.Sprintf("%s // %d\n", scanner.Text(), lastObjectId))
 			if err != nil {
-				log.Fatalln(err)
+				log.Panicln(err)
 			}
 			result := make(map[string]string)
 			for i, name := range objectRegexp.SubexpNames() {
@@ -304,7 +304,7 @@ func convert(path string, output string) {
 
 			_, err = objectsService.DeleteObject(ctx, &objects.DeleteObjectRequest{Id: lastObjectId})
 			if err != nil {
-				log.Fatalln(err)
+				log.Panicln(err)
 			}
 			objectsIds = objectsIds[:len(objectsIds)-1] //possible -1 index
 
@@ -350,7 +350,7 @@ func convert(path string, output string) {
 				},
 			})
 			if err != nil {
-				log.Fatalln(err)
+				log.Panicln(err)
 			}
 
 			_, err = estatesService.AddGate(ctx, &estates.AddGateRequest{
@@ -358,13 +358,13 @@ func convert(path string, output string) {
 				GateId:   gate.Id,
 			})
 			if err != nil {
-				log.Fatalln(err)
+				log.Panicln(err)
 			}
 			gatesIds = append(gatesIds, gate.Id)
 		} else if match := entriesRegexp.FindStringSubmatch(scanner.Text()); len(match) > 0 {
 			_, err = entriesOutput.WriteString(scanner.Text() + "\n")
 			if err != nil {
-				log.Fatalln(err)
+				log.Panicln(err)
 			}
 
 			result := make(map[string]string)
@@ -422,19 +422,19 @@ func convert(path string, output string) {
 				},
 			})
 			if err != nil {
-				log.Fatalln(err)
+				log.Panicln(err)
 			}
 			entrancesIds = append(entrancesIds, entrance.Id)
 
 		} else if materialTextRegexp.MatchString(scanner.Text()) {
 			_, err = materialText.WriteString(scanner.Text() + "\n")
 			if err != nil {
-				log.Fatalln(err)
+				log.Panicln(err)
 			}
 		} else {
 			_, err = othersOutput.WriteString(scanner.Text() + "\n")
 			if err != nil {
-				log.Fatalln(err)
+				log.Panicln(err)
 			}
 		}
 	}
