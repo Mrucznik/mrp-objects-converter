@@ -159,7 +159,14 @@ func convert(path string, output string) {
 	defer othersOutput.Close()
 
 	//Create estate
-	estateName := filepath.Base(path)[:len(filepath.Base(path))-4]
+	var estateName string
+	pathDir := filepath.Base(output)
+	pathName := filepath.Base(path)[:len(filepath.Base(path))-4]
+	if strings.EqualFold(pathDir, pathName) {
+		estateName = pathDir
+	} else {
+		estateName = fmt.Sprintf("%s_%s", pathDir, pathName)
+	}
 	ctx := context.Background()
 	estate, err := estatesService.CreateEstate(ctx, &estates.CreateEstateRequest{
 		Name:        estateName,
