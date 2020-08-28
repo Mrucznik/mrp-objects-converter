@@ -37,7 +37,6 @@ var estatesService estates.MruVEstateServiceClient
 var gatesService gates.MruVGatesServiceClient
 var entrancesService entrances.MruVEntrancesServiceClient
 var objectsService objects.MruVObjectsServiceClient
-var movableService objects.MruVMovableObjectsServiceClient
 
 func main() {
 	// Set up a connection to the server.
@@ -50,7 +49,6 @@ func main() {
 	gatesService = gates.NewMruVGatesServiceClient(conn)
 	entrancesService = entrances.NewMruVEntrancesServiceClient(conn)
 	objectsService = objects.NewMruVObjectsServiceClient(conn)
-	movableService = objects.NewMruVMovableObjectsServiceClient(conn)
 
 	if _, err := os.Stat(outputPath); !os.IsNotExist(err) {
 		fmt.Println("Removing out dir and it's content.")
@@ -157,7 +155,7 @@ func convert(path string, output string) {
 	defer othersOutput.Close()
 
 	//Create estate
-	estateName := filepath.Base(path)
+	estateName := filepath.Base(path)[:len(filepath.Base(path))-4]
 	ctx := context.Background()
 	estate, err := estatesService.CreateEstate(ctx, &estates.CreateEstateRequest{
 		Name:        estateName,
@@ -271,18 +269,14 @@ func convert(path string, output string) {
 				log.Panicln(err)
 			}
 			result := make(map[string]string)
-			for i, name := range objectRegexp.SubexpNames() {
+			for i, name := range gatesRegexp.SubexpNames() {
 				if i != 0 && name != "" {
 					result[name] = match[i]
 				}
 			}
 
 			var gateName, spotName string
-			if len(result["comment"]) == 0 {
-				gateName = result["comment"]
-			} else {
-				gateName = fmt.Sprintf("%s_gate_%d", estateName, lastObjectId)
-			}
+			gateName = fmt.Sprintf("%s_gate_%d", estateName, lastObjectId)
 			spotName = gateName + "_spot"
 
 			ox, _ := strconv.ParseFloat(result["ox"], 32)
@@ -349,6 +343,7 @@ func convert(path string, output string) {
 					Int:     lastObject.InteriorId,
 				},
 			})
+			log.Printf("%f\n", ox)
 			if err != nil {
 				log.Panicln(err)
 			}
@@ -368,19 +363,15 @@ func convert(path string, output string) {
 			}
 
 			result := make(map[string]string)
-			for i, name := range objectRegexp.SubexpNames() {
+			for i, name := range entriesRegexp.SubexpNames() {
 				if i != 0 && name != "" {
 					result[name] = match[i]
 				}
 			}
 
 			var entranceName, spotName string
-			if len(result["comment"]) == 0 {
-				entranceName = result["comment"]
-			} else {
-				entranceName = fmt.Sprintf("%s_entrance_%d", estateName, entrancesCount)
-				entrancesCount++
-			}
+			entranceName = fmt.Sprintf("%s_entrance_%d", estateName, entrancesCount)
+			entrancesCount++
 			spotName = entranceName + "_spot"
 
 			ox, _ := strconv.ParseFloat(result["ox"], 32)
@@ -424,6 +415,15 @@ func convert(path string, output string) {
 			if err != nil {
 				log.Panicln(err)
 			}
+
+			_, err = estatesService.AddEntrance(ctx, &estates.AddEntranceRequest{
+				EstateId:   estate.Id,
+				EntranceId: entrance.Id,
+			})
+			if err != nil {
+				log.Panicln(err)
+			}
+
 			entrancesIds = append(entrancesIds, entrance.Id)
 
 		} else if materialTextRegexp.MatchString(scanner.Text()) {
