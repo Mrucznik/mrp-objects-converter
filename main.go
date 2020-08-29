@@ -19,6 +19,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 const objectsPath = "/home/mrucznik/repos/samp/Mrucznik-RP-2.5/gamemodes/obiekty/nowe"
@@ -60,6 +61,7 @@ func main() {
 		}
 	}
 
+	var totalObjects, totalMaterials, totalMaterialsTexts, totalBuildings, totalGates, totalEntrances int
 	err = filepath.Walk(objectsPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -68,13 +70,12 @@ func main() {
 			return nil
 		}
 
-		var totalObjects, totalMaterials, totalMaterialsTexts, totalBuildings, totalGates, totalEntrances int
 		if strings.HasSuffix(info.Name(), ".pwn") {
 			dir := filepath.Dir(path)
 
 			objectsC, materialsC, materialTextsC, buildingsC, gatesC, entrancesC := convert(path, outputPath+filepath.Base(dir))
 
-			fmt.Printf("Successfully processed: %v objects, %v materials, %v material texts, %v removed buildings, %v gates and %v entrances! :)",
+			fmt.Printf("Successfully processed: %v objects, %v materials, %v material texts, %v removed buildings, %v gates and %v entrances! :)\n",
 				objectsC, materialsC, materialTextsC, buildingsC, gatesC, entrancesC)
 			totalObjects += objectsC
 			totalMaterials += materialsC
@@ -84,13 +85,13 @@ func main() {
 			totalEntrances += entrancesC
 		}
 
-		fmt.Printf("--- Total processed items: %v objects, %v materials, %v material texts, %v removed buildings, %v gates and %v entrances!",
-			totalObjects, totalMaterials, totalMaterialsTexts, totalBuildings, totalGates, totalEntrances)
 		return nil
 	})
 	if err != nil {
 		fmt.Println(err)
 	}
+	fmt.Printf("--- Total processed items: %v objects, %v materials, %v material texts, %v removed buildings, %v gates and %v entrances!\n",
+		totalObjects, totalMaterials, totalMaterialsTexts, totalBuildings, totalGates, totalEntrances)
 }
 
 func convert(path string, output string) (int, int, int, int, int, int) {
@@ -595,7 +596,7 @@ func convert(path string, output string) (int, int, int, int, int, int) {
 			oMessage := result["o_message"]
 			iMessage := result["i_message"]
 
-			entrance, err := entrancesService.CreateEntrance(ctx, &entrances.CreateEntranceRequest{
+			createReq := &entrances.CreateEntranceRequest{
 				Name: entranceName,
 				Out: &spots.Spot{
 					Name:    spotName + "_out",
@@ -619,21 +620,24 @@ func convert(path string, output string) (int, int, int, int, int, int) {
 					Vw:      int32(ivw),
 					Int:     int32(iint),
 				},
-			})
-			if err != nil {
-				log.Panicln(err)
 			}
-
-			_, err = estatesService.AddEntrance(ctx, &estates.AddEntranceRequest{
-				EstateId:   estate.Id,
-				EntranceId: entrance.Id,
-			})
-			if err != nil {
-				log.Panicln(err)
-			}
-
-			entrancesIds = append(entrancesIds, entrance.Id)
-
+			mx := sync.Mutex{}
+			go func(estateId uint32) {
+				entrance, err := entrancesService.CreateEntrance(ctx, createReq)
+				if err != nil {
+					log.Panicln(err)
+				}
+				_, err = estatesService.AddEntrance(ctx, &estates.AddEntranceRequest{
+					EstateId:   estateId,
+					EntranceId: entrance.Id,
+				})
+				if err != nil {
+					log.Panicln(err)
+				}
+				mx.Lock()
+				entrancesIds = append(entrancesIds, entrance.Id)
+				mx.Unlock()
+			}(estate.Id)
 		} else if match := buildingRegexp.FindStringSubmatch(scanner.Text()); len(match) > 0 {
 			_, err = buildingsOutput.WriteString(scanner.Text() + "\n")
 			if err != nil {
@@ -647,8 +651,8 @@ func convert(path string, output string) (int, int, int, int, int, int) {
 				}
 			}
 
-			model, err := strconv.Atoi(result["model"])
-			checkErr(err, "entrance model")
+			model, err := strconv.Atoi(result["modelid"])
+			checkErr(err, "building model")
 			x, err := strconv.ParseFloat(result["x"], 32)
 			checkErr(err, "building ox")
 			y, err := strconv.ParseFloat(result["y"], 32)
@@ -657,19 +661,25 @@ func convert(path string, output string) (int, int, int, int, int, int) {
 			radius, err := strconv.ParseFloat(result["radius"], 32)
 			checkErr(err, "building radius")
 
-			building, err := objectsService.AddRemoveBuilding(ctx, &objects.AddRemoveBuildingRequest{RemovedBuilding: &objects.RemovedBuilding{
+			req := &objects.AddRemoveBuildingRequest{RemovedBuilding: &objects.RemovedBuilding{
 				Model:    uint32(model),
 				X:        float32(x),
 				Y:        float32(y),
 				Z:        float32(z),
 				Radius:   float32(radius),
 				EstateId: estate.Id,
-			}})
-			if err != nil {
-				log.Panicln(err)
-			}
+			}}
+			mx := sync.Mutex{}
+			go func() {
+				building, err := objectsService.AddRemoveBuilding(ctx, req)
+				if err != nil {
+					log.Panicln(err)
+				}
+				mx.Lock()
+				removedBuildingsIds = append(removedBuildingsIds, building.Id)
+				mx.Unlock()
+			}()
 
-			removedBuildingsIds = append(removedBuildingsIds, building.Id)
 		} else {
 			_, err = othersOutput.WriteString(scanner.Text() + "\n")
 			if err != nil {
