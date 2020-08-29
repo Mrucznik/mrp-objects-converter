@@ -68,12 +68,24 @@ func main() {
 			return nil
 		}
 
+		var totalObjects, totalMaterials, totalMaterialsTexts, totalBuildings, totalGates, totalEntrances int
 		if strings.HasSuffix(info.Name(), ".pwn") {
 			dir := filepath.Dir(path)
 
-			convert(path, outputPath+filepath.Base(dir))
+			objectsC, materialsC, materialTextsC, buildingsC, gatesC, entrancesC := convert(path, outputPath+filepath.Base(dir))
+
+			fmt.Printf("Successfully processed: %v objects, %v materials, %v material texts, %v removed buildings, %v gates and %v entrances! :)",
+				objectsC, materialsC, materialTextsC, buildingsC, gatesC, entrancesC)
+			totalObjects += objectsC
+			totalMaterials += materialsC
+			totalMaterialsTexts += materialTextsC
+			totalBuildings += buildingsC
+			totalGates += gatesC
+			totalEntrances += entrancesC
 		}
 
+		fmt.Printf("--- Total processed items: %v objects, %v materials, %v material texts, %v removed buildings, %v gates and %v entrances!",
+			totalObjects, totalMaterials, totalMaterialsTexts, totalBuildings, totalGates, totalEntrances)
 		return nil
 	})
 	if err != nil {
@@ -81,10 +93,14 @@ func main() {
 	}
 }
 
-func convert(path string, output string) {
+func convert(path string, output string) (int, int, int, int, int, int) {
+	var estateId uint32
 	objectsIds := make([]uint32, 0, 10000)
 	gatesIds := make([]uint32, 0, 1000)
 	entrancesIds := make([]uint32, 0, 1000)
+	materialCount := 0
+	materialTextCount := 0
+	removedBuildingsIds := make([]uint32, 0, 1000)
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("Rolling back changes... Path: %s\n", path)
@@ -102,6 +118,18 @@ func convert(path string, output string) {
 			}
 			for _, i := range entrancesIds {
 				_, err := entrancesService.DeleteEntrance(context.Background(), &entrances.DeleteEntranceRequest{Id: i})
+				if err != nil {
+					log.Println(err)
+				}
+			}
+			for _, i := range removedBuildingsIds {
+				_, err := objectsService.DeleteRemoveBuilding(context.Background(), &objects.DeleteRemoveBuildingRequest{Id: i})
+				if err != nil {
+					log.Println(err)
+				}
+			}
+			if estateId != 0 {
+				_, err := estatesService.DeleteEstate(context.Background(), &estates.DeleteEstateRequest{Id: estateId})
 				if err != nil {
 					log.Println(err)
 				}
@@ -175,6 +203,7 @@ func convert(path string, output string) {
 	if err != nil {
 		log.Panicln(err)
 	}
+	estateId = estate.Id
 
 	// convert
 	scanner := bufio.NewScanner(r)
@@ -336,6 +365,7 @@ func convert(path string, output string) {
 			if err != nil {
 				log.Panicln(err)
 			}
+			materialCount++
 		} else if match := materialTextRegexp.FindStringSubmatch(scanner.Text()); len(match) > 0 {
 			_, err = materialText.WriteString(scanner.Text() + "\n")
 			if err != nil {
@@ -414,7 +444,7 @@ func convert(path string, output string) {
 			if err != nil {
 				log.Panicln(err)
 			}
-
+			materialTextCount++
 		} else if match := gatesRegexp.FindStringSubmatch(scanner.Text()); len(match) > 0 {
 			if lastObject == nil {
 				log.Panicln("Last object is nil for gate: " + scanner.Text())
@@ -604,11 +634,42 @@ func convert(path string, output string) {
 
 			entrancesIds = append(entrancesIds, entrance.Id)
 
-		} else if buildingRegexp.MatchString(scanner.Text()) {
+		} else if match := buildingRegexp.FindStringSubmatch(scanner.Text()); len(match) > 0 {
 			_, err = buildingsOutput.WriteString(scanner.Text() + "\n")
 			if err != nil {
 				log.Panicln(err)
 			}
+
+			result := make(map[string]string)
+			for i, name := range buildingRegexp.SubexpNames() {
+				if i != 0 && name != "" {
+					result[name] = match[i]
+				}
+			}
+
+			model, err := strconv.Atoi(result["model"])
+			checkErr(err, "entrance model")
+			x, err := strconv.ParseFloat(result["x"], 32)
+			checkErr(err, "building ox")
+			y, err := strconv.ParseFloat(result["y"], 32)
+			checkErr(err, "building oy")
+			z, err := strconv.ParseFloat(result["z"], 32)
+			radius, err := strconv.ParseFloat(result["radius"], 32)
+			checkErr(err, "building radius")
+
+			building, err := objectsService.AddRemoveBuilding(ctx, &objects.AddRemoveBuildingRequest{RemovedBuilding: &objects.RemovedBuilding{
+				Model:    uint32(model),
+				X:        float32(x),
+				Y:        float32(y),
+				Z:        float32(z),
+				Radius:   float32(radius),
+				EstateId: estate.Id,
+			}})
+			if err != nil {
+				log.Panicln(err)
+			}
+
+			removedBuildingsIds = append(removedBuildingsIds, building.Id)
 		} else {
 			_, err = othersOutput.WriteString(scanner.Text() + "\n")
 			if err != nil {
@@ -616,10 +677,11 @@ func convert(path string, output string) {
 			}
 		}
 	}
-
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
 	}
+
+	return len(objectsIds), materialCount, materialTextCount, len(removedBuildingsIds), len(gatesIds), len(entrancesIds)
 }
 
 func checkErr(err error, name string) {
