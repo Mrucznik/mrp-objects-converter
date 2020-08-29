@@ -260,11 +260,87 @@ func convert(path string, output string) {
 			}
 			lastObjectId = object.Id
 			objectsIds = append(objectsIds, lastObjectId)
-		} else if materialRegexp.MatchString(scanner.Text()) {
+		} else if match := materialRegexp.FindStringSubmatch(scanner.Text()); len(match) > 0 {
 			_, err = materialsOutput.WriteString(fmt.Sprintf("%s // %d\n", scanner.Text(), lastObjectId))
 			if err != nil {
 				log.Panicln(err)
 			}
+			result := make(map[string]string)
+			for i, name := range materialRegexp.SubexpNames() {
+				if i != 0 && name != "" {
+					result[name] = match[i]
+				}
+			}
+
+			materialindex, err := strconv.Atoi(result["materialindex"])
+			checkErr(err)
+			modelid, err := strconv.Atoi(result["modelid"])
+			checkErr(err)
+			txdname := result["txdname"]
+			texturename := result["texturename"]
+			materialcolor, err := strconv.Atoi(result["materialcolor"])
+			checkErr(err)
+
+			_, err = objectsService.AddObjectMaterial(ctx, &objects.AddObjectMaterialRequest{
+				ObjectId: lastObjectId,
+				Index:    uint32(materialindex),
+				Material: &objects.Material{
+					ModelId:       int32(modelid),
+					TxdName:       txdname,
+					TextureName:   texturename,
+					MaterialColor: int32(materialcolor),
+				},
+			})
+			if err != nil {
+				log.Panicln(err)
+			}
+		} else if match := materialTextRegexp.FindStringSubmatch(scanner.Text()); len(match) > 0 {
+			_, err = materialText.WriteString(scanner.Text() + "\n")
+			if err != nil {
+				log.Panicln(err)
+			}
+			result := make(map[string]string)
+			for i, name := range materialTextRegexp.SubexpNames() {
+				if i != 0 && name != "" {
+					result[name] = match[i]
+				}
+			}
+
+			materialindex, err := strconv.Atoi(result["materialindex"])
+			checkErr(err)
+			text := result["text"]
+			materialsize, err := strconv.Atoi(result["materialsize"])
+			checkErr(err)
+			fontface := result["fontface"]
+			fontsize, err := strconv.Atoi(result["fontsize"])
+			checkErr(err)
+			bold, err := strconv.Atoi(result["bold"])
+			checkErr(err)
+			fontcolor, err := strconv.Atoi(result["fontcolor"])
+			checkErr(err)
+			backcolor, err := strconv.Atoi(result["backcolor"])
+			checkErr(err)
+			textalignment, err := strconv.Atoi(result["textalignment"])
+			checkErr(err)
+
+			_, err = objectsService.AddObjectMaterialText(ctx, &objects.AddObjectMaterialTextRequest{
+				ObjectId: lastObjectId,
+				Index:    uint32(materialindex),
+				MaterialText: &objects.MaterialText{
+					Text:          text,
+					MaterialSize:  objects.MaterialSize(materialsize),
+					FontFace:      fontface,
+					FontSize:      uint32(fontsize),
+					Bold:          bold != 0,
+					FontColor:     int32(fontcolor),
+					BackColor:     int32(backcolor),
+					TextAlignment: int32(textalignment),
+				},
+			})
+			if err != nil {
+				log.Panicln(err)
+			}
+
 		} else if buildingRegexp.MatchString(scanner.Text()) {
 			_, err = buildingsOutput.WriteString(scanner.Text() + "\n")
 			if err != nil {
@@ -290,19 +366,32 @@ func convert(path string, output string) {
 			gateName = fmt.Sprintf("%s_gate_%d", estateName, lastObjectId)
 			spotName = gateName + "_spot"
 
-			ox, _ := strconv.ParseFloat(result["ox"], 32)
-			oy, _ := strconv.ParseFloat(result["oy"], 32)
-			oz, _ := strconv.ParseFloat(result["oz"], 32)
-			orx, _ := strconv.ParseFloat(result["orx"], 32)
-			ory, _ := strconv.ParseFloat(result["ory"], 32)
-			orz, _ := strconv.ParseFloat(result["orz"], 32)
-			zx, _ := strconv.ParseFloat(result["zx"], 32)
-			zy, _ := strconv.ParseFloat(result["zy"], 32)
-			zz, _ := strconv.ParseFloat(result["zz"], 32)
-			zrx, _ := strconv.ParseFloat(result["zrx"], 32)
-			zry, _ := strconv.ParseFloat(result["zry"], 32)
-			zrz, _ := strconv.ParseFloat(result["zrz"], 32)
-			speed, _ := strconv.ParseFloat(result["speed"], 32)
+			ox, err := strconv.ParseFloat(result["ox"], 32)
+			checkErr(err)
+			oy, err := strconv.ParseFloat(result["oy"], 32)
+			checkErr(err)
+			oz, err := strconv.ParseFloat(result["oz"], 32)
+			checkErr(err)
+			orx, err := strconv.ParseFloat(result["orx"], 32)
+			checkErr(err)
+			ory, err := strconv.ParseFloat(result["ory"], 32)
+			checkErr(err)
+			orz, err := strconv.ParseFloat(result["orz"], 32)
+			checkErr(err)
+			zx, err := strconv.ParseFloat(result["zx"], 32)
+			checkErr(err)
+			zy, err := strconv.ParseFloat(result["zy"], 32)
+			checkErr(err)
+			zz, err := strconv.ParseFloat(result["zz"], 32)
+			checkErr(err)
+			zrx, err := strconv.ParseFloat(result["zrx"], 32)
+			checkErr(err)
+			zry, err := strconv.ParseFloat(result["zry"], 32)
+			checkErr(err)
+			zrz, err := strconv.ParseFloat(result["zrz"], 32)
+			checkErr(err)
+			speed, err := strconv.ParseFloat(result["speed"], 32)
+			checkErr(err)
 			//activationRange, _ := strconv.ParseFloat(result["range"], 32)
 			//permType, _ := strconv.Atoi(result["perm_type"])
 			//permId, _ := strconv.Atoi(result["perm_id"])
@@ -384,16 +473,26 @@ func convert(path string, output string) {
 			entrancesCount++
 			spotName = entranceName + "_spot"
 
-			ox, _ := strconv.ParseFloat(result["ox"], 32)
-			oy, _ := strconv.ParseFloat(result["oy"], 32)
-			oz, _ := strconv.ParseFloat(result["oz"], 32)
-			ix, _ := strconv.ParseFloat(result["ix"], 32)
-			iy, _ := strconv.ParseFloat(result["iy"], 32)
-			iz, _ := strconv.ParseFloat(result["iz"], 32)
-			ovw, _ := strconv.Atoi(result["ovw"])
-			ivw, _ := strconv.Atoi(result["ivw"])
-			iint, _ := strconv.Atoi(result["iint"])
-			oint, _ := strconv.Atoi(result["oint"])
+			ox, err := strconv.ParseFloat(result["ox"], 32)
+			checkErr(err)
+			oy, err := strconv.ParseFloat(result["oy"], 32)
+			checkErr(err)
+			oz, err := strconv.ParseFloat(result["oz"], 32)
+			checkErr(err)
+			ix, err := strconv.ParseFloat(result["ix"], 32)
+			checkErr(err)
+			iy, err := strconv.ParseFloat(result["iy"], 32)
+			checkErr(err)
+			iz, err := strconv.ParseFloat(result["iz"], 32)
+			checkErr(err)
+			ovw, err := strconv.Atoi(result["ovw"])
+			checkErr(err)
+			ivw, err := strconv.Atoi(result["ivw"])
+			checkErr(err)
+			iint, err := strconv.Atoi(result["iint"])
+			checkErr(err)
+			oint, err := strconv.Atoi(result["oint"])
+			checkErr(err)
 			oMessage := result["o_message"]
 			iMessage := result["i_message"]
 
@@ -436,11 +535,6 @@ func convert(path string, output string) {
 
 			entrancesIds = append(entrancesIds, entrance.Id)
 
-		} else if materialTextRegexp.MatchString(scanner.Text()) {
-			_, err = materialText.WriteString(scanner.Text() + "\n")
-			if err != nil {
-				log.Panicln(err)
-			}
 		} else {
 			_, err = othersOutput.WriteString(scanner.Text() + "\n")
 			if err != nil {
@@ -451,6 +545,12 @@ func convert(path string, output string) {
 
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
+	}
+}
+
+func checkErr(err error) {
+	if err != nil {
+		log.Printf("CONVERSION ERROR: %v", err)
 	}
 }
 
