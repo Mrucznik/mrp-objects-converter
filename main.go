@@ -19,6 +19,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const objectsPath = "/home/mrucznik/repos/samp/Mrucznik-RP-2.5/gamemodes/obiekty/nowe"
@@ -30,8 +31,8 @@ var buildingRegexp, _ = regexp.Compile("RemoveBuildingForPlayer\\s*\\(\\s*(?P<pl
 var gatesRegexp, _ = regexp.Compile("DodajBrame\\s*\\(\\s*(?P<obiekt>\\w+)\\s*,\\s*(?P<ox>[0-9.\\-]+)\\s*,\\s*(?P<oy>[0-9.\\-]+)\\s*,\\s*(?P<oz>[0-9.\\-]+)\\s*,\\s*(?P<orx>[0-9.\\-]+)\\s*,\\s*(?P<ory>[0-9.\\-]+)\\s*,\\s*(?P<orz>[0-9.\\-]+)\\s*,\\s*(?P<zx>[0-9.\\-]+)\\s*,\\s*(?P<zy>[0-9.\\-]+)\\s*,\\s*(?P<zz>[0-9.\\-]+)\\s*,\\s*(?P<zrx>[0-9.\\-]+)\\s*,\\s*(?P<zry>[0-9.\\-]+)\\s*,\\s*(?P<zrz>[0-9.\\-]+)\\s*,\\s*(?P<speed>[0-9.\\-]+)\\s*,\\s*(?P<range>[0-9.\\-]+)\\s*(?:,\\s*(?P<perm_type>\\w+)\\s*)?(?:,\\s*(?P<perm_id>[0-9.\\-]+)\\s*)?\\)\\s*;[\\t ]*(?:\\/\\/(?P<comment>.+))?")
 var entriesRegexp, _ = regexp.Compile("DodajWejscie\\s*\\(\\s*(?P<ox>[0-9.\\-]+)\\s*,\\s*(?P<oy>[0-9.\\-]+)\\s*,\\s*(?P<oz>[0-9.\\-]+)\\s*,\\s*(?P<ix>[0-9.\\-]+)\\s*,\\s*(?P<iy>[0-9.\\-]+)\\s*,\\s*(?P<iz>[0-9.\\-]+)\\s*(?:,\\s*(?P<ovw>[0-9\\-_]+)\\s*)?(?:,\\s*(?P<oint>[0-9\\-_]+)\\s*)?(?:,\\s*(?P<ivw>[0-9\\-_]+)\\s*)?(?:,\\s*(?P<iint>[0-9\\-_]+)\\s*)?(?:,\\s*\"(?P<o_message>\\\"[^\"]*\\\")\"\\s*)?(?:,\\s*\"(?P<i_message>\\\"[^\"]*\\\")\"\\s*)?(?:,\\s*(?P<wejdzUID>[0-9\\-]+)\\s*)?(?:,\\s*(?P<playerLocal>\\w+)\\s*)?(?:,\\s*(?P<specialCome>true|false)\\s*)?\\)\\s*;[\\t ]*(?:\\/\\/(?P<comment>.+))?")
 var materialTextRegexp, _ = regexp.Compile("SetDynamicObjectMaterialText\\s*\\(\\s*(?P<objectid>\\w+)\\s*,\\s*(?P<materialindex>\\d+)\\s*,\\s*\"(?P<text>[^\"]+)\"\\s*(?:,\\s*(?P<materialsize>\\d+)\\s*)?(?:,\\s*\"(?P<fontface>[^\",]+)\"\\s*)?(?:,\\s*(?P<fontsize>\\d+)\\s*)?(?:,\\s*(?P<bold>\\d+)\\s*)?(?:,\\s*(?P<fontcolor>\\w+)\\s*)?(?:,\\s*(?P<backcolor>\\w+)\\s*)?(?:,\\s*(?P<textalignment>\\d+)\\s*\\)?)\\s*;[\\t ]*(?:\\/\\/(?P<comment>.+))?")
+var dualGateRegexp, _ = regexp.Compile("DualGateAdd\\s*\\(\\s*(?P<objectid>[\\w\\[\\]]+)\\s*,\\s*(?P<ox>[0-9.\\-]+)\\s*,\\s*(?P<oy>[0-9.\\-]+)\\s*,\\s*(?P<oz>[0-9.\\-]+)\\s*,\\s*(?P<orx>[0-9.\\-]+)\\s*,\\s*(?P<ory>[0-9.\\-]+)\\s*,\\s*(?P<orz>[0-9.\\-]+)\\s*,\\s*(?P<zx>[0-9.\\-]+)\\s*,\\s*(?P<zy>[0-9.\\-]+)\\s*,\\s*(?P<zz>[0-9.\\-]+)\\s*,\\s*(?P<zrx>[0-9.\\-]+)\\s*,\\s*(?P<zry>[0-9.\\-]+)\\s*,\\s*(?P<zrz>[0-9.\\-]+)\\s*,\\s*(?P<objectid2>[\\w\\[\\]]+)\\s*,\\s*(?P<ox2>[0-9.\\-]+)\\s*,\\s*(?P<oy2>[0-9.\\-]+)\\s*,\\s*(?P<oz2>[0-9.\\-]+)\\s*,\\s*(?P<orx2>[0-9.\\-]+)\\s*,\\s*(?P<ory2>[0-9.\\-]+)\\s*,\\s*(?P<orz2>[0-9.\\-]+)\\s*,\\s*(?P<zx2>[0-9.\\-]+)\\s*,\\s*(?P<zy2>[0-9.\\-]+)\\s*,\\s*(?P<zz2>[0-9.\\-]+)\\s*,\\s*(?P<zrx2>[0-9.\\-]+)\\s*,\\s*(?P<zry2>[0-9.\\-]+)\\s*,\\s*(?P<zrz2>[0-9.\\-]+)\\s*,\\s*(?P<speed>[0-9.\\-]+)\\s*,\\s*(?P<range>[0-9.\\-]+)\\s*(?:,\\s*(?P<perm_type>\\w+)\\s*)?(?:,\\s*(?P<perm_id>[0-9.\\-]+)\\s*)?(?:,\\s*(?P<access_card>\\w+)\\s*)?(?:,\\s*(?P<flag>\\w+)\\s*)?\\s*\\)\\s*;")
 
-//var dualGateRegexp, _ = regexp.Compile("DualGateAdd\\s*\\(\\s*(?P<objectid>[\\w\\[\\]]+)\\s*,\\s*(?P<ox>[0-9.\\-]+)\\s*,\\s*(?P<oy>[0-9.\\-]+)\\s*,\\s*(?P<oz>[0-9.\\-]+)\\s*,\\s*(?P<orx>[0-9.\\-]+)\\s*,\\s*(?P<ory>[0-9.\\-]+)\\s*,\\s*(?P<orz>[0-9.\\-]+)\\s*,\\s*(?P<zx>[0-9.\\-]+)\\s*,\\s*(?P<zy>[0-9.\\-]+)\\s*,\\s*(?P<zz>[0-9.\\-]+)\\s*,\\s*(?P<zrx>[0-9.\\-]+)\\s*,\\s*(?P<zry>[0-9.\\-]+)\\s*,\\s*(?P<zrz>[0-9.\\-]+)\\s*,\\s*(?P<objectid2>[\\w\\[\\]]+)\\s*,\\s*(?P<ox2>[0-9.\\-]+)\\s*,\\s*(?P<oy2>[0-9.\\-]+)\\s*,\\s*(?P<oz2>[0-9.\\-]+)\\s*,\\s*(?P<orx2>[0-9.\\-]+)\\s*,\\s*(?P<ory2>[0-9.\\-]+)\\s*,\\s*(?P<orz2>[0-9.\\-]+)\\s*,\\s*(?P<zx2>[0-9.\\-]+)\\s*,\\s*(?P<zy2>[0-9.\\-]+)\\s*,\\s*(?P<zz2>[0-9.\\-]+)\\s*,\\s*(?P<zrx2>[0-9.\\-]+)\\s*,\\s*(?P<zry2>[0-9.\\-]+)\\s*,\\s*(?P<zrz2>[0-9.\\-]+)\\s*,\\s*(?P<speed>[0-9.\\-]+)\\s*,\\s*(?P<range>[0-9.\\-]+)\\s*(?:,\\s*(?P<perm_type>\\w+)\\s*)?(?:,\\s*(?P<perm_id>[0-9.\\-]+)\\s*)?(?:,\\s*(?P<access_card>\\w+)\\s*)?(?:,\\s*(?P<flag>\\w+)\\s*)?\\)\\s*;[\\t ]*(?:\\/\\/(?P<comment>.+))?")
 //var pickupRegexp, _ = regexp.Compile("CreateDynamicPickup(modelid, type, Float:x, Float:y, Float:z, worldid = -1, interiorid = -1, playerid = -1, Float:streamdistance = STREAMER_PICKUP_SD, areaid = -1, priority = 0)")
 //var text3dRegexp, _ = regexp.Compile("CreateDynamic3DTextLabel( const text[], color, Float:x, Float:y, Float:z, Float:drawdistance, attachedplayer = INVALID_PLAYER_ID, attachedvehicle = INVALID_VEHICLE_ID, testlos = 0, worldid = -1, interiorid = -1, playerid = -1, Float:streamdistance = STREAMER_3D_TEXT_LABEL_SD, areaid = -1, priority = 0 )")
 
@@ -60,7 +61,11 @@ func main() {
 		}
 	}
 
+	//test
+	// convert("/home/mrucznik/repos/samp/Mrucznik-RP-2.5/gamemodes/obiekty/nowe/DMV/intekdmv.pwn", outputPath+filepath.Base("xd"))
+
 	var totalObjects, totalMaterials, totalMaterialsTexts, totalBuildings, totalGates, totalEntrances int
+	totalStart := time.Now()
 	err = filepath.Walk(objectsPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -72,10 +77,12 @@ func main() {
 		if strings.HasSuffix(info.Name(), ".pwn") {
 			dir := filepath.Dir(path)
 
+			start := time.Now()
 			objectsC, materialsC, materialTextsC, buildingsC, gatesC, entrancesC := convert(path, outputPath+filepath.Base(dir))
-
-			fmt.Printf("Successfully processed: %v objects, %v materials, %v material texts, %v removed buildings, %v gates and %v entrances! :)\n",
-				objectsC, materialsC, materialTextsC, buildingsC, gatesC, entrancesC)
+			duration := time.Since(start)
+			fmt.Printf("Successfully processed: %v objects, %v materials, %v material texts, %v removed buildings, %v gates and %v entrances in %v (%vops/s)\n",
+				objectsC, materialsC, materialTextsC, buildingsC, gatesC, entrancesC, duration,
+				float64(objectsC+materialsC+materialTextsC+buildingsC+gatesC+entrancesC)/duration.Seconds())
 			totalObjects += objectsC
 			totalMaterials += materialsC
 			totalMaterialsTexts += materialTextsC
@@ -89,8 +96,9 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Printf("--- Total processed items: %v objects, %v materials, %v material texts, %v removed buildings, %v gates and %v entrances!\n",
-		totalObjects, totalMaterials, totalMaterialsTexts, totalBuildings, totalGates, totalEntrances)
+	totalDuration := time.Since(totalStart)
+	fmt.Printf("--- Total processed items: %v objects, %v materials, %v material texts, %v removed buildings, %v gates and %v entrances in %v!\n",
+		totalObjects, totalMaterials, totalMaterialsTexts, totalBuildings, totalGates, totalEntrances, totalDuration)
 }
 
 func convert(path string, output string) (int, int, int, int, int, int) {
@@ -235,7 +243,9 @@ func convert(path string, output string) (int, int, int, int, int, int) {
 		return 0, nil, nil
 	})
 	var lastObjectId uint32
+	var lastObjectId2 uint32
 	var lastObject *objects.Object
+	var lastObject2 *objects.Object
 	entrancesCount := 0
 	for scanner.Scan() {
 		if match := objectRegexp.FindStringSubmatch(scanner.Text()); len(match) > 0 {
@@ -299,6 +309,8 @@ func convert(path string, output string) (int, int, int, int, int, int) {
 				checkErr(err, "object priority")
 			}
 
+			lastObjectId2 = lastObjectId
+			lastObject2 = lastObject
 			lastObject = &objects.Object{
 				Model:          uint32(model),
 				X:              float32(x),
@@ -445,6 +457,168 @@ func convert(path string, output string) (int, int, int, int, int, int) {
 				log.Panicln(err)
 			}
 			materialTextCount++
+		} else if match := dualGateRegexp.FindStringSubmatch(scanner.Text()); len(match) > 0 {
+			if lastObject == nil {
+				log.Panicln("Last object is nil for gate: " + scanner.Text())
+			}
+
+			_, err = gatesOutput.WriteString(fmt.Sprintf("%s // %d & %d\n", scanner.Text(), lastObjectId, lastObjectId2))
+			if err != nil {
+				log.Panicln(err)
+			}
+			result := make(map[string]string)
+			for i, name := range dualGateRegexp.SubexpNames() {
+				if i != 0 && name != "" {
+					result[name] = match[i]
+				}
+			}
+
+			var gateName, spotName string
+			gateName = fmt.Sprintf("%s_dualgate_%d_%d", estateName, lastObjectId, lastObjectId2)
+			spotName = gateName + "_spot"
+
+			ox, err := strconv.ParseFloat(result["ox"], 32)
+			checkErr(err, "gate ox")
+			oy, err := strconv.ParseFloat(result["oy"], 32)
+			checkErr(err, "gate oy")
+			oz, err := strconv.ParseFloat(result["oz"], 32)
+			checkErr(err, "gate oz")
+			orx, err := strconv.ParseFloat(result["orx"], 32)
+			checkErr(err, "gate orx")
+			ory, err := strconv.ParseFloat(result["ory"], 32)
+			checkErr(err, "gate ory")
+			orz, err := strconv.ParseFloat(result["orz"], 32)
+			checkErr(err, "gate orz")
+			zx, err := strconv.ParseFloat(result["zx"], 32)
+			checkErr(err, "gate zx")
+			zy, err := strconv.ParseFloat(result["zy"], 32)
+			checkErr(err, "gate zy")
+			zz, err := strconv.ParseFloat(result["zz"], 32)
+			checkErr(err, "gate zz")
+			zrx, err := strconv.ParseFloat(result["zrx"], 32)
+			checkErr(err, "gate zrx")
+			zry, err := strconv.ParseFloat(result["zry"], 32)
+			checkErr(err, "gate zry")
+			zrz, err := strconv.ParseFloat(result["zrz"], 32)
+			checkErr(err, "gate zrz")
+			ox2, err := strconv.ParseFloat(result["ox2"], 32)
+			checkErr(err, "gate ox")
+			oy2, err := strconv.ParseFloat(result["oy2"], 32)
+			checkErr(err, "gate oy")
+			oz2, err := strconv.ParseFloat(result["oz2"], 32)
+			checkErr(err, "gate oz")
+			orx2, err := strconv.ParseFloat(result["orx2"], 32)
+			checkErr(err, "gate orx")
+			ory2, err := strconv.ParseFloat(result["ory2"], 32)
+			checkErr(err, "gate ory")
+			orz2, err := strconv.ParseFloat(result["orz2"], 32)
+			checkErr(err, "gate orz")
+			zx2, err := strconv.ParseFloat(result["zx2"], 32)
+			checkErr(err, "gate zx")
+			zy2, err := strconv.ParseFloat(result["zy2"], 32)
+			checkErr(err, "gate zy")
+			zz2, err := strconv.ParseFloat(result["zz2"], 32)
+			checkErr(err, "gate zz")
+			zrx2, err := strconv.ParseFloat(result["zrx2"], 32)
+			checkErr(err, "gate zrx")
+			zry2, err := strconv.ParseFloat(result["zry2"], 32)
+			checkErr(err, "gate zry")
+			zrz2, err := strconv.ParseFloat(result["zrz2"], 32)
+			checkErr(err, "gate zrz")
+			speed, err := strconv.ParseFloat(result["speed"], 32)
+			checkErr(err, "gate speed")
+			//activationRange, _ := strconv.ParseFloat(result["range"], 32)
+			//permType, _ := strconv.Atoi(result["perm_type"])
+			//permId, _ := strconv.Atoi(result["perm_id"])
+
+			_, err = objectsService.DeleteObject(ctx, &objects.DeleteObjectRequest{Id: lastObjectId})
+			if err != nil {
+				log.Panicln(err)
+			}
+			_, err = objectsService.DeleteObject(ctx, &objects.DeleteObjectRequest{Id: lastObjectId2})
+			if err != nil {
+				log.Panicln(err)
+			}
+			objectsIds = objectsIds[:len(objectsIds)-2] //possible -2 index
+
+			gate, err := gatesService.CreateGate(ctx, &gates.CreateGateRequest{
+				Name: gateName,
+				GateObjects: []*objects.MovableObject{
+					{
+						Object: lastObject,
+						States: []*objects.State{
+							{
+								Name:            "Open",
+								X:               float32(ox),
+								Y:               float32(oy),
+								Z:               float32(oz),
+								Rx:              float32(orx),
+								Ry:              float32(ory),
+								Rz:              float32(orz),
+								TransitionSpeed: float32(speed),
+							},
+							{
+								Name:            "Closed",
+								X:               float32(zx),
+								Y:               float32(zy),
+								Z:               float32(zz),
+								Rx:              float32(zrx),
+								Ry:              float32(zry),
+								Rz:              float32(zrz),
+								TransitionSpeed: float32(speed),
+							},
+						},
+					},
+					{
+						Object: lastObject2,
+						States: []*objects.State{
+							{
+								Name:            "Open",
+								X:               float32(ox2),
+								Y:               float32(oy2),
+								Z:               float32(oz2),
+								Rx:              float32(orx2),
+								Ry:              float32(ory2),
+								Rz:              float32(orz2),
+								TransitionSpeed: float32(speed),
+							},
+							{
+								Name:            "Closed",
+								X:               float32(zx2),
+								Y:               float32(zy2),
+								Z:               float32(zz2),
+								Rx:              float32(zrx2),
+								Ry:              float32(zry2),
+								Rz:              float32(zrz2),
+								TransitionSpeed: float32(speed),
+							},
+						},
+					},
+				},
+				Spot: &spots.Spot{
+					Name:    spotName,
+					Message: "",
+					Icon:    0,
+					Marker:  0,
+					X:       float32(ox),
+					Y:       float32(oy),
+					Z:       float32(oz),
+					Vw:      lastObject.WorldId,
+					Int:     lastObject.InteriorId,
+				},
+			})
+			if err != nil {
+				log.Panicln(err)
+			}
+
+			_, err = estatesService.AddGate(ctx, &estates.AddGateRequest{
+				EstateId: estate.Id,
+				GateId:   gate.Id,
+			})
+			if err != nil {
+				log.Panicln(err)
+			}
+			gatesIds = append(gatesIds, gate.Id)
 		} else if match := gatesRegexp.FindStringSubmatch(scanner.Text()); len(match) > 0 {
 			if lastObject == nil {
 				log.Panicln("Last object is nil for gate: " + scanner.Text())
