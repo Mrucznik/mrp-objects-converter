@@ -220,20 +220,55 @@ func convert(path string, output string) {
 					result[name] = match[i]
 				}
 			}
-			model, _ := strconv.Atoi(result["modelid"])
-			x, _ := strconv.ParseFloat(result["x"], 32)
-			y, _ := strconv.ParseFloat(result["y"], 32)
-			z, _ := strconv.ParseFloat(result["z"], 32)
-			rx, _ := strconv.ParseFloat(result["rx"], 32)
-			ry, _ := strconv.ParseFloat(result["ry"], 32)
-			rz, _ := strconv.ParseFloat(result["rz"], 32)
-			worldid, _ := strconv.Atoi(result["worldid"])
-			interiorid, _ := strconv.Atoi(result["interiorid"])
-			playerid, _ := strconv.Atoi(result["playerid"])
-			areaid, _ := strconv.Atoi(result["areaid"])
-			streamdistance, _ := strconv.ParseFloat(result["streamdistance"], 32)
-			drawdistance, _ := strconv.ParseFloat(result["drawdistance"], 32)
-			priority, _ := strconv.Atoi(result["priority"])
+			model, err := strconv.Atoi(result["modelid"])
+			checkErr(err, "object modelid")
+			x, err := strconv.ParseFloat(result["x"], 32)
+			checkErr(err, "object x")
+			y, err := strconv.ParseFloat(result["y"], 32)
+			checkErr(err, "object y")
+			z, err := strconv.ParseFloat(result["z"], 32)
+			checkErr(err, "object z")
+			rx, err := strconv.ParseFloat(result["rx"], 32)
+			checkErr(err, "object rx")
+			ry, err := strconv.ParseFloat(result["ry"], 32)
+			checkErr(err, "object ry")
+			rz, err := strconv.ParseFloat(result["rz"], 32)
+			checkErr(err, "object rz")
+			worldid := -1
+			if result["worldid"] != "" && result["worldid"] != "_" {
+				worldid, err = strconv.Atoi(result["worldid"])
+				checkErr(err, "object worldid")
+			}
+			interiorid := -1
+			if result["interiorid"] != "" && result["interiorid"] != "_" {
+				interiorid, err = strconv.Atoi(result["interiorid"])
+				checkErr(err, "object interiorid")
+			}
+			playerid := -1
+			if result["playerid"] != "" && result["playerid"] != "_" {
+				playerid, err = strconv.Atoi(result["playerid"])
+				checkErr(err, "object playerid")
+			}
+			areaid := -1
+			if result["areaid"] != "" && result["areaid"] != "_" {
+				areaid, err = strconv.Atoi(result["areaid"])
+				checkErr(err, "object areaid")
+			}
+			streamdistance := 300.0
+			if result["streamdistance"] != "" && result["streamdistance"] != "_" {
+				streamdistance, err = strconv.ParseFloat(result["streamdistance"], 32)
+				checkErr(err, "object streamdistance")
+			}
+			drawdistance := 0.0
+			if result["drawdistance"] != "" && result["drawdistance"] != "_" {
+				drawdistance, err = strconv.ParseFloat(result["drawdistance"], 32)
+				checkErr(err, "object drawdistance")
+			}
+			priority := 0
+			if result["priority"] != "" && result["priority"] != "_" {
+				priority, err = strconv.Atoi(result["priority"])
+				checkErr(err, "object priority")
+			}
 
 			lastObject = &objects.Object{
 				Model:          uint32(model),
@@ -273,13 +308,20 @@ func convert(path string, output string) {
 			}
 
 			materialindex, err := strconv.Atoi(result["materialindex"])
-			checkErr(err)
+			checkErr(err, "material index")
 			modelid, err := strconv.Atoi(result["modelid"])
-			checkErr(err)
+			checkErr(err, "material modelid")
 			txdname := result["txdname"]
 			texturename := result["texturename"]
-			materialcolor, err := strconv.Atoi(result["materialcolor"])
-			checkErr(err)
+			materialcolor := 0
+			if result["materialcolor"] != "" && result["materialcolor"] != "_" {
+				materialcolor, err = strconv.Atoi(result["materialcolor"])
+			}
+			if err != nil {
+				i64, err := strconv.ParseInt(result["materialcolor"], 16, 32)
+				materialcolor = int(i64)
+				checkErr(err, "material color")
+			}
 
 			_, err = objectsService.AddObjectMaterial(ctx, &objects.AddObjectMaterialRequest{
 				ObjectId: lastObjectId,
@@ -307,31 +349,63 @@ func convert(path string, output string) {
 			}
 
 			materialindex, err := strconv.Atoi(result["materialindex"])
-			checkErr(err)
+			checkErr(err, "materialtext materialindex")
 			text := result["text"]
-			materialsize, err := strconv.Atoi(result["materialsize"])
-			checkErr(err)
-			fontface := result["fontface"]
-			fontsize, err := strconv.Atoi(result["fontsize"])
-			checkErr(err)
-			bold, err := strconv.Atoi(result["bold"])
-			checkErr(err)
-			fontcolor, err := strconv.Atoi(result["fontcolor"])
-			checkErr(err)
-			backcolor, err := strconv.Atoi(result["backcolor"])
-			checkErr(err)
-			textalignment, err := strconv.Atoi(result["textalignment"])
-			checkErr(err)
+			materialsize := objects.MaterialSize_OBJECT_MATERIAL_SIZE_256X128
+			if result["materialsize"] != "" && result["materialsize"] != "_" {
+				if materialSizeInt, err := strconv.Atoi(result["materialsize"]); err == nil {
+					materialsize = objects.MaterialSize(materialSizeInt)
+				} else {
+					materialsize = objects.MaterialSize(objects.MaterialSize_value[result["materialsize"]])
+				}
+			}
+			fontface := "Arial"
+			if result["fontface"] != "" && result["fontface"] != "_" {
+				fontface = result["fontface"]
+			}
+			fontsize := 24
+			if result["fontsize"] != "" && result["fontsize"] != "_" {
+				fontsize, err = strconv.Atoi(result["fontsize"])
+				checkErr(err, "materialtext fontsize")
+			}
+			bold := true
+			if result["bold"] != "" && result["bold"] != "_" {
+				bold, err = strconv.ParseBool(result["bold"])
+				checkErr(err, "materialtext bold")
+			}
+			fontcolor := 0xFFFFFFFF
+			if result["fontcolor"] != "" && result["fontcolor"] != "_" {
+				fontcolor, err = strconv.Atoi(result["fontcolor"])
+				if err != nil {
+					i64, err := strconv.ParseInt(result["fontcolor"], 16, 32)
+					fontcolor = int(i64)
+					checkErr(err, "materialtext fontcolor")
+				}
+			}
+			backcolor := 0
+			if result["backcolor"] != "" && result["backcolor"] != "_" {
+				backcolor, err = strconv.Atoi(result["backcolor"])
+				if err != nil {
+					i64, err := strconv.ParseInt(result["backcolor"], 16, 32)
+					backcolor = int(i64)
+					checkErr(err, "materialtext backcolor")
+				}
+			}
+			textalignment := 0
+			if result["textalignment"] != "" && result["textalignment"] != "_" {
+				textalignment, err = strconv.Atoi(result["textalignment"])
+				checkErr(err, "materialtext textalignment")
+			}
 
 			_, err = objectsService.AddObjectMaterialText(ctx, &objects.AddObjectMaterialTextRequest{
 				ObjectId: lastObjectId,
 				Index:    uint32(materialindex),
 				MaterialText: &objects.MaterialText{
 					Text:          text,
-					MaterialSize:  objects.MaterialSize(materialsize),
+					MaterialSize:  materialsize,
 					FontFace:      fontface,
 					FontSize:      uint32(fontsize),
-					Bold:          bold != 0,
+					Bold:          bold,
 					FontColor:     int32(fontcolor),
 					BackColor:     int32(backcolor),
 					TextAlignment: int32(textalignment),
@@ -341,11 +415,6 @@ func convert(path string, output string) {
 				log.Panicln(err)
 			}
 
-		} else if buildingRegexp.MatchString(scanner.Text()) {
-			_, err = buildingsOutput.WriteString(scanner.Text() + "\n")
-			if err != nil {
-				log.Panicln(err)
-			}
 		} else if match := gatesRegexp.FindStringSubmatch(scanner.Text()); len(match) > 0 {
 			if lastObject == nil {
 				log.Panicln("Last object is nil for gate: " + scanner.Text())
@@ -367,31 +436,31 @@ func convert(path string, output string) {
 			spotName = gateName + "_spot"
 
 			ox, err := strconv.ParseFloat(result["ox"], 32)
-			checkErr(err)
+			checkErr(err, "gate ox")
 			oy, err := strconv.ParseFloat(result["oy"], 32)
-			checkErr(err)
+			checkErr(err, "gate oy")
 			oz, err := strconv.ParseFloat(result["oz"], 32)
-			checkErr(err)
+			checkErr(err, "gate oz")
 			orx, err := strconv.ParseFloat(result["orx"], 32)
-			checkErr(err)
+			checkErr(err, "gate orx")
 			ory, err := strconv.ParseFloat(result["ory"], 32)
-			checkErr(err)
+			checkErr(err, "gate ory")
 			orz, err := strconv.ParseFloat(result["orz"], 32)
-			checkErr(err)
+			checkErr(err, "gate orz")
 			zx, err := strconv.ParseFloat(result["zx"], 32)
-			checkErr(err)
+			checkErr(err, "gate zx")
 			zy, err := strconv.ParseFloat(result["zy"], 32)
-			checkErr(err)
+			checkErr(err, "gate zy")
 			zz, err := strconv.ParseFloat(result["zz"], 32)
-			checkErr(err)
+			checkErr(err, "gate zz")
 			zrx, err := strconv.ParseFloat(result["zrx"], 32)
-			checkErr(err)
+			checkErr(err, "gate zrx")
 			zry, err := strconv.ParseFloat(result["zry"], 32)
-			checkErr(err)
+			checkErr(err, "gate zry")
 			zrz, err := strconv.ParseFloat(result["zrz"], 32)
-			checkErr(err)
+			checkErr(err, "gate zrz")
 			speed, err := strconv.ParseFloat(result["speed"], 32)
-			checkErr(err)
+			checkErr(err, "gate speed")
 			//activationRange, _ := strconv.ParseFloat(result["range"], 32)
 			//permType, _ := strconv.Atoi(result["perm_type"])
 			//permId, _ := strconv.Atoi(result["perm_id"])
@@ -474,25 +543,25 @@ func convert(path string, output string) {
 			spotName = entranceName + "_spot"
 
 			ox, err := strconv.ParseFloat(result["ox"], 32)
-			checkErr(err)
+			checkErr(err, "entrance ox")
 			oy, err := strconv.ParseFloat(result["oy"], 32)
-			checkErr(err)
+			checkErr(err, "entrance oy")
 			oz, err := strconv.ParseFloat(result["oz"], 32)
-			checkErr(err)
+			checkErr(err, "entrance oz")
 			ix, err := strconv.ParseFloat(result["ix"], 32)
-			checkErr(err)
+			checkErr(err, "entrance ix")
 			iy, err := strconv.ParseFloat(result["iy"], 32)
-			checkErr(err)
+			checkErr(err, "entrance iy")
 			iz, err := strconv.ParseFloat(result["iz"], 32)
-			checkErr(err)
+			checkErr(err, "entrance iz")
 			ovw, err := strconv.Atoi(result["ovw"])
-			checkErr(err)
+			checkErr(err, "entrance ovw")
 			ivw, err := strconv.Atoi(result["ivw"])
-			checkErr(err)
+			checkErr(err, "entrance ivw")
 			iint, err := strconv.Atoi(result["iint"])
-			checkErr(err)
+			checkErr(err, "entrance iint")
 			oint, err := strconv.Atoi(result["oint"])
-			checkErr(err)
+			checkErr(err, "entrance oint")
 			oMessage := result["o_message"]
 			iMessage := result["i_message"]
 
@@ -535,6 +604,11 @@ func convert(path string, output string) {
 
 			entrancesIds = append(entrancesIds, entrance.Id)
 
+		} else if buildingRegexp.MatchString(scanner.Text()) {
+			_, err = buildingsOutput.WriteString(scanner.Text() + "\n")
+			if err != nil {
+				log.Panicln(err)
+			}
 		} else {
 			_, err = othersOutput.WriteString(scanner.Text() + "\n")
 			if err != nil {
@@ -548,9 +622,9 @@ func convert(path string, output string) {
 	}
 }
 
-func checkErr(err error) {
+func checkErr(err error, name string) {
 	if err != nil {
-		log.Printf("CONVERSION ERROR: %v", err)
+		log.Printf("CONVERSION ERROR: %v for %v", err, name)
 	}
 }
 
