@@ -19,7 +19,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 const objectsPath = "/home/mrucznik/repos/samp/Mrucznik-RP-2.5/gamemodes/obiekty/nowe"
@@ -596,7 +595,7 @@ func convert(path string, output string) (int, int, int, int, int, int) {
 			oMessage := result["o_message"]
 			iMessage := result["i_message"]
 
-			createReq := &entrances.CreateEntranceRequest{
+			entrance, err := entrancesService.CreateEntrance(ctx, &entrances.CreateEntranceRequest{
 				Name: entranceName,
 				Out: &spots.Spot{
 					Name:    spotName + "_out",
@@ -620,24 +619,21 @@ func convert(path string, output string) (int, int, int, int, int, int) {
 					Vw:      int32(ivw),
 					Int:     int32(iint),
 				},
+			})
+			if err != nil {
+				log.Panicln(err)
 			}
-			mx := sync.Mutex{}
-			go func(estateId uint32) {
-				entrance, err := entrancesService.CreateEntrance(ctx, createReq)
-				if err != nil {
-					log.Panicln(err)
-				}
-				_, err = estatesService.AddEntrance(ctx, &estates.AddEntranceRequest{
-					EstateId:   estateId,
-					EntranceId: entrance.Id,
-				})
-				if err != nil {
-					log.Panicln(err)
-				}
-				mx.Lock()
-				entrancesIds = append(entrancesIds, entrance.Id)
-				mx.Unlock()
-			}(estate.Id)
+
+			_, err = estatesService.AddEntrance(ctx, &estates.AddEntranceRequest{
+				EstateId:   estate.Id,
+				EntranceId: entrance.Id,
+			})
+			if err != nil {
+				log.Panicln(err)
+			}
+
+			entrancesIds = append(entrancesIds, entrance.Id)
+
 		} else if match := buildingRegexp.FindStringSubmatch(scanner.Text()); len(match) > 0 {
 			_, err = buildingsOutput.WriteString(scanner.Text() + "\n")
 			if err != nil {
@@ -661,25 +657,19 @@ func convert(path string, output string) (int, int, int, int, int, int) {
 			radius, err := strconv.ParseFloat(result["radius"], 32)
 			checkErr(err, "building radius")
 
-			req := &objects.AddRemoveBuildingRequest{RemovedBuilding: &objects.RemovedBuilding{
+			building, err := objectsService.AddRemoveBuilding(ctx, &objects.AddRemoveBuildingRequest{RemovedBuilding: &objects.RemovedBuilding{
 				Model:    uint32(model),
 				X:        float32(x),
 				Y:        float32(y),
 				Z:        float32(z),
 				Radius:   float32(radius),
 				EstateId: estate.Id,
-			}}
-			mx := sync.Mutex{}
-			go func() {
-				building, err := objectsService.AddRemoveBuilding(ctx, req)
-				if err != nil {
-					log.Panicln(err)
-				}
-				mx.Lock()
-				removedBuildingsIds = append(removedBuildingsIds, building.Id)
-				mx.Unlock()
-			}()
+			}})
+			if err != nil {
+				log.Panicln(err)
+			}
 
+			removedBuildingsIds = append(removedBuildingsIds, building.Id)
 		} else {
 			_, err = othersOutput.WriteString(scanner.Text() + "\n")
 			if err != nil {
