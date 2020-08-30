@@ -19,6 +19,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const objectsPath = "/home/mrucznik/repos/samp/Mrucznik-RP-2.5/gamemodes/obiekty/nowe"
@@ -60,49 +61,41 @@ func main() {
 		}
 	}
 
-	//test
-	//
-	convert("/home/mrucznik/repos/samp/Mrucznik-RP-2.5/gamemodes/obiekty/nowe/WarsztatFDU/WarsztatFDU.pwn", "out/WarsztatFDU")
-	convert("/home/mrucznik/repos/samp/Mrucznik-RP-2.5/gamemodes/obiekty/nowe/Sad/interiorSCOSA.pwn", "out/Sad")
-	convert("/home/mrucznik/repos/samp/Mrucznik-RP-2.5/gamemodes/obiekty/nowe/LSMC/lsmc.pwn", "out/LSMC")
-	convert("/home/mrucznik/repos/samp/Mrucznik-RP-2.5/gamemodes/obiekty/nowe/stanowe/stanoweext.pwn", "out/stanowe")
-	convert("/home/mrucznik/repos/samp/Mrucznik-RP-2.5/gamemodes/obiekty/nowe/sa_bahamas/sa_bahamas.pwn", "out/sa_bahamas")
+	var totalObjects, totalMaterials, totalMaterialsTexts, totalBuildings, totalGates, totalEntrances int
+	totalStart := time.Now()
+	err = filepath.Walk(objectsPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
 
-	//var totalObjects, totalMaterials, totalMaterialsTexts, totalBuildings, totalGates, totalEntrances int
-	//totalStart := time.Now()
-	//err = filepath.Walk(objectsPath, func(path string, info os.FileInfo, err error) error {
-	//	if err != nil {
-	//		return err
-	//	}
-	//	if info.IsDir() {
-	//		return nil
-	//	}
-	//
-	//	if strings.HasSuffix(info.Name(), ".pwn") {
-	//		dir := filepath.Dir(path)
-	//
-	//		start := time.Now()
-	//		objectsC, materialsC, materialTextsC, buildingsC, gatesC, entrancesC := convert(path, outputPath+filepath.Base(dir))
-	//		duration := time.Since(start)
-	//		fmt.Printf("Successfully processed: %v objects, %v materials, %v material texts, %v removed buildings, %v gates and %v entrances in %v (%vop/s)\n",
-	//			objectsC, materialsC, materialTextsC, buildingsC, gatesC, entrancesC, duration,
-	//			float64(objectsC+materialsC+materialTextsC+buildingsC+gatesC+entrancesC)/duration.Seconds())
-	//		totalObjects += objectsC
-	//		totalMaterials += materialsC
-	//		totalMaterialsTexts += materialTextsC
-	//		totalBuildings += buildingsC
-	//		totalGates += gatesC
-	//		totalEntrances += entrancesC
-	//	}
-	//
-	//	return nil
-	//})
-	//if err != nil {
-	//	fmt.Println(err)
-	//}
-	//totalDuration := time.Since(totalStart)
-	//fmt.Printf("--- Total processed items: %v objects, %v materials, %v material texts, %v removed buildings, %v gates and %v entrances in %v!\n",
-	//	totalObjects, totalMaterials, totalMaterialsTexts, totalBuildings, totalGates, totalEntrances, totalDuration)
+		if strings.HasSuffix(info.Name(), ".pwn") {
+			dir := filepath.Dir(path)
+
+			start := time.Now()
+			objectsC, materialsC, materialTextsC, buildingsC, gatesC, entrancesC := convert(path, outputPath+filepath.Base(dir))
+			duration := time.Since(start)
+			fmt.Printf("Successfully processed: %v objects, %v materials, %v material texts, %v removed buildings, %v gates and %v entrances in %v (%vop/s)\n",
+				objectsC, materialsC, materialTextsC, buildingsC, gatesC, entrancesC, duration,
+				float64(objectsC+materialsC+materialTextsC+buildingsC+gatesC+entrancesC)/duration.Seconds())
+			totalObjects += objectsC
+			totalMaterials += materialsC
+			totalMaterialsTexts += materialTextsC
+			totalBuildings += buildingsC
+			totalGates += gatesC
+			totalEntrances += entrancesC
+		}
+
+		return nil
+	})
+	if err != nil {
+		fmt.Println(err)
+	}
+	totalDuration := time.Since(totalStart)
+	fmt.Printf("--- Total processed items: %v objects, %v materials, %v material texts, %v removed buildings, %v gates and %v entrances in %v!\n",
+		totalObjects, totalMaterials, totalMaterialsTexts, totalBuildings, totalGates, totalEntrances, totalDuration)
 }
 
 func convert(path string, output string) (int, int, int, int, int, int) {
